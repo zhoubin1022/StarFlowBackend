@@ -14,8 +14,6 @@ class Task(models.Model):
 
 class Record(models.Model):
     submit_time = models.DateTimeField(auto_now_add=True)  # 提交时间
-    task_id = models.ForeignKey('Task', on_delete=models.CASCADE)  # 任务 id
-    submitMember = models.ForeignKey('Repository.Member', related_name="submit", on_delete=models.CASCADE)  # 提交项目人员 id
     submit_info = models.CharField(max_length=100)  # 提交描述
     submitMember = models.ForeignKey('Repository.Member', to_field='id',
                                      on_delete=models.CASCADE, related_name='submit', null=True)
@@ -23,7 +21,6 @@ class Record(models.Model):
     checkMember = models.ForeignKey('Repository.Member', to_field='id',
                                     on_delete=models.CASCADE, related_name='checking', null=True)
     # Member表 id
-
     check_time = models.DateTimeField(auto_now=True)  # 审核时间
     result = models.IntegerField(null=True)  # 审核结果
     comment = models.CharField(max_length=100, null=True)  # 评价信息
