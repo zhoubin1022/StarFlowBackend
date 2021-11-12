@@ -1,54 +1,41 @@
 from django.shortcuts import render
 
 # Create your views here.
-from django.shortcuts import render
 
-# Create your views here.
-from django.test import TestCase
-
-# Create your tests here.
-
-#读取数据库里的内容
-# !/usr/bin/python3
-# coding=utf-8
-
-import pymysql
-
-# Open database connection
-db = pymysql.connect(host='121.40.142.200',
-    user='root',
-    password='1234',
-    database='starFlow')
+from django.http import JsonResponse, HttpResponse
+from Repositpry.models import Repository,Member
+from StarFlowBackend import settings
 
 
-# prepare a cursor object using cursor() method
-cursor = db.cursor()
-# 按字典返回
-# cursor = db.cursor(pymysql.cursors.DictCursor)
+def databasequery(request):  # 展示该用户参与的项目列表
+    if request.method =='POST':
+        userid= int(request.POST.get('uid'))
+        repository_id=Repository_member.objects.filter(user_id=userid)
+        records=Repository_reposiry.objects.filter(repo_id=repository_id)
+        result = {"message": 'success', "data": serializers.serialize('python', records)}
+        return JsonResponse(result)
+    return JsonResponse({"message": 'wrong'})
 
-# 查询操作，从member表里输出所有信息，条件为id=xxxx
-sql = "SELECT * FROM Repository_member "
-# print (sql)
-try:
-    # Execute the SQL command
-    cursor.execute(sql)
-    # Fetch all the rows in a list of lists.
-    results = cursor.fetchall()
-    for row in results:
-        # print (row)
-        #输出前端要的内容，从表的row赋值给他
+def database_query_tasklist(request):  #展示项目的任务列表
+    if request.method=='POST':
+        userid = int(request.POST.get('repo_id'))
+        repository_id = Repository_member.objects.filter(user_id=userid)
+        records = Task_task.objects.filter(repo_id=repository_id)
+        result = {"message": 'success', "data": serializers.serialize('python', records)}
+        return JsonResponse(result)
+    return JsonResponse({"message": 'wrong'})
 
-        # Now print fetched result
-        #print("name = %s %s,age = %s,sex = %s,income = %s" % \
-              #(fname, lname, age, sex, income))
-except:
-    import traceback
 
-    traceback.print_exc()
 
-    print("Error: unable to fetch data")
+def database_project_insert(request):  # 用户选择一个项目，把该项目放入数据库，并将当前用户设为超级管理员
+    if request.method == 'POST':
+        repo_member=request.POST.get('repo_member')
+        url = request.POST.get('url')
+        repo_name =request.POST.get('repo_name')
+        finished =request.POST.get('finished')
+        checking = request.POST.get('checking')
+        incomplete = request.POST.get('incomplete')
+        insert_records=
+def databasedelete():  # 数据库删除操作
 
-# disconnect from server
-db.close()
-11111111
-
+def databasemodify():  # 数据库数据修改
