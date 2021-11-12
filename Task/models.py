@@ -15,6 +15,7 @@ class Task(models.Model):
 class Record(models.Model):
     submit_time = models.DateTimeField(auto_now_add=True)  # 提交时间
     submit_info = models.CharField(max_length=100)  # 提交描述
+    task_id = models.ForeignKey('Task', on_delete=models.CASCADE, related_name='task', null=True)
     submitMember = models.ForeignKey('Repository.Member', to_field='id',
                                      on_delete=models.CASCADE, related_name='submit', null=True)
     request_id = models.IntegerField()  # 在仓库 pull request 的 id
@@ -22,5 +23,5 @@ class Record(models.Model):
                                     on_delete=models.CASCADE, related_name='checking', null=True)
     # Member表 id
     check_time = models.DateTimeField(auto_now=True)  # 审核时间
-    result = models.IntegerField(null=True)  # 审核结果
+    result = models.IntegerField(null=True)  # 审核结果 0 1
     comment = models.CharField(max_length=100, null=True)  # 评价信息
