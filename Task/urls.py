@@ -3,5 +3,6 @@ from Task import views
 from Task import admin
 
 urlpatterns = [
-    path('deps', views.getDevelopers)
+    path('developer', views.getDevelopers),
+    path('record', views.getTaskRecord),
 ]
