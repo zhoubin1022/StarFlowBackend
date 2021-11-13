@@ -16,10 +16,10 @@ class Record(models.Model):
     submit_time = models.DateTimeField(auto_now_add=True)  # 提交时间
     submit_info = models.CharField(max_length=100)  # 提交描述
     task_id = models.ForeignKey('Task', on_delete=models.CASCADE, related_name='task', null=True)
-    submitMember = models.ForeignKey('Repository.Member', to_field='id',
+    submitMember = models.ForeignKey('Repository.Member',
                                      on_delete=models.CASCADE, related_name='submit', null=True)
     request_id = models.IntegerField()  # 在仓库 pull request 的 id
-    checkMember = models.ForeignKey('Repository.Member', to_field='id',
+    checkMember = models.ForeignKey('Repository.Member',
                                     on_delete=models.CASCADE, related_name='checking', null=True)
     # Member表 id
     check_time = models.DateTimeField(auto_now=True)  # 审核时间, 审核自动生成

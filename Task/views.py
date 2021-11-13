@@ -29,15 +29,22 @@ def getTaskRecord(request):
         result = {"message": 'success', "data": []}
         # repo_id = int(request.POST.get('repo_id'))
         task_id = int(request.POST.get('task_id'))
-        task_record = Record.objects.filter(task_id=task_id)
-        records = []
-        for i in task_record:
-            print(serializers.serialize('python', i.submitMember))
-            #  s_id = i.submitMember
-        #     username = Member.objects.get(pk=s_id).username
-        #     record = {"record": i.submitMember, "username": username}
-        #     records.append(record)
-        # result["data"] = serializers.serialize('python', records)
+        task_record = Record.objects.filter(task_id_id=task_id)
+        for x in task_record:
+            record = {"pk": x.pk, "submit_time": x.submit_time, "submit_info": x.submit_info, "task_id": task_id,
+                      "submitMember": x.submitMember_id, "request_id": x.request_id, "checkMember": x.checkMember_id,
+                      "check_time": x.check_time, "result": x.result, "comment": x.comment}
+            s_id = x.submitMember_id
+            s_name = Member.objects.get(pk=s_id).username
+            record["s_name"] = s_name
+            c_id = x.checkMember_id
+            print(s_id)
+            print(c_id)
+            if c_id:
+                c_name = Member.objects.get(pk=c_id).username
+                record["c_name"] = c_name
+            record["c_name"] = ""
+            result["data"].append(record)
         return JsonResponse(result)
     return JsonResponse({"message": 'wrong'})
 
