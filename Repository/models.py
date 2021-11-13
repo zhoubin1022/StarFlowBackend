@@ -13,9 +13,9 @@ class Repository(models.Model):
 
 
 class Member(models.Model):
-    repo = models.ForeignKey('Repository', on_delete=models.CASCADE)
+    repo_id = models.ForeignKey('Repository', on_delete=models.CASCADE)  # repo表的主键
     # on_delete=models.CASCADE
-    user = models.ForeignKey('User.User', on_delete=models.CASCADE)
+    user_id = models.ForeignKey('User.User', on_delete=models.CASCADE)  # user表的主键
     username = models.CharField(max_length=50)  # github用户名
     # 字符串字段  单行输入，用于较短的字符串，如要保存大量文本, 使用 TextField。
     # 必须 max_length 参数，django会根据这个参数在数据库层和校验层限制该字段所允许的最大字符数。
