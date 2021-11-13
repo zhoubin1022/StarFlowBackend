@@ -1,7 +1,5 @@
 import re
 
-from lxml import html
-from xml import etree
 
 import requests
 from django.core import serializers
@@ -80,21 +78,27 @@ def test(request):
 # 微信登录
 def wxLogin(request):
     if request.method == 'POST':
-        result = {"status": 0, "data": []}  # 0表示不存在已创建，1表示已存在
+        result = {"status": 0}  # 0表示不存在已创建，1表示已存在
         code = request.POST.get('code')
         user_info = getUserInfo(code)
         openid = user_info['openid']
         session_key = user_info['session_key']
         user = User.objects.filter(openid=openid)
         if user:
-            result['data'] = serializers.serialize('python', user)
+            result['id'] = user.first().pk
+            result['username'] = user.first().username
             result['status'] = 1
+            print(result)
             return JsonResponse(result)
         new_user = User(openid=openid, session_key=session_key)
         new_user.save()
         user = User.objects.filter(openid=openid)
-        result['data'] = serializers.serialize('python', user)
+        result['id'] = user.first().pk
+        result['username'] = user.first().username
+        result['status'] = 1
+        print(result)
         return JsonResponse(result)
+    return JsonResponse({"message": "请求方式错误"})
 
 
 # 根据code获取相应信息
@@ -112,20 +116,18 @@ def getUserInfo(code):
 # github登录
 def githubLogin(request):
     if request.method == 'POST':
-        result = {"message": 'success', "data": []}
-        openid = request.POST.get('openid')
+        result = {"message": 'success'}
+        uid = int(request.POST.get('id'))
         username = request.POST.get('username')
         password = request.POST.get('password')
-        users = User.objects.filter(openid=openid)
+        users = User.objects.filter(pk=uid)
         if not users:
             return JsonResponse({"message": '小程序登录状态出错'})
         user = users.first()
-        if not (user.openid == openid):
-            return JsonResponse({"message": '小程序登录状态错误'})
-        login = Login()
-        status = login.login(username, password)
-        if not status:
-            return JsonResponse({"message": '账号或密码错误'})
+        # login = Login()
+        # status = login.login(username, password)
+        # if not status:
+        #     return JsonResponse({"message": '账号或密码错误'})
         user.username = username
         user.password = password
         user.save()
