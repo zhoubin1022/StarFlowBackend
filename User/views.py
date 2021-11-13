@@ -1,10 +1,15 @@
+import re
+
 from lxml import html
 from xml import etree
 
 import requests
 from django.core import serializers
 from django.http import JsonResponse
-from User.models import User
+from requests.adapters import HTTPAdapter
+
+from Repository.models import Repository
+from User.models import User, Join_request
 
 
 class Login(object):
@@ -22,11 +27,12 @@ class Login(object):
 
     # 解析出登录所需要的
     def token(self):
-        res = self.session.get(self.login_url, headers=self.headers)
+        self.session.mount('https://', HTTPAdapter(max_retries=3))
+        res = self.session.get(self.login_url, headers=self.headers, timeout=15)
         if res.status_code == requests.codes.ok:
-            res_obj = html.etree.HTML(res.text)
-            token_value = res_obj.xpath('//div[@id="login"]/form/input[@name="authenticity_token"]/@value')[0]
-            return token_value
+            authenticity_token = re.findall('<input type="hidden" name="authenticity_token" value="(.+?)" />', res.text)
+            print("authenticity_token：{}".format(authenticity_token))
+            return authenticity_token[1]
 
     def login(self, username, password):
         post_data = {
@@ -65,8 +71,10 @@ class Login(object):
 
 def test(request):
     login = Login()
-    login.get_request("django/django", 1)
-    return JsonResponse({})
+    status = login.login("zhoubin1022", "z20011022b")
+    if status:
+        return JsonResponse({"status": "yes"})
+    return JsonResponse({"status": "no"})
 
 
 # 微信登录
@@ -114,8 +122,38 @@ def githubLogin(request):
         user = users.first()
         if not (user.openid == openid):
             return JsonResponse({"message": '小程序登录状态错误'})
-
+        login = Login()
+        status = login.login(username, password)
+        if not status:
+            return JsonResponse({"message": '账号或密码错误'})
         user.username = username
         user.password = password
         user.save()
         return JsonResponse(result)
+
+
+# 加入项目请求
+def repo_request(request):
+    if request.method == 'POST':
+        user_id = int(request.POST.get('user'))
+        repo_id = int(request.POST.get('repo'))
+        user = User.objects.get(pk=user_id)
+        if not user:
+            return JsonResponse({"message": "用户信息错误"})
+        repo = Repository.objects.get(pk=repo_id)
+        if not repo:
+            return JsonResponse({"message": "仓库信息错误"})
+        new_request = Join_request(user_id=user_id, repo_id=repo_id)
+        new_request.save()
+        return JsonResponse({"message": "success"})
+    return JsonResponse({"message": "请求方式错误"})
+
+
+# 项目查询
+def repo_search(request):
+    if request.method == 'POST':
+        keyword = request.POST.get('keyword')
+        repos = Repository.objects.filter(repo_name__icontains=keyword)
+        result = {"message": "success", "data": serializers.serialize("python", repos)}
+        return JsonResponse(result)
+    return JsonResponse({"message": "请求方式错误"})
