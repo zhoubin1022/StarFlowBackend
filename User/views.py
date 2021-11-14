@@ -6,7 +6,8 @@ from django.core import serializers
 from django.http import JsonResponse
 from requests.adapters import HTTPAdapter
 
-from Repository.models import Repository
+from Repository.models import Repository, Member
+from Task.models import Task
 from User.models import User, Join_request
 
 
@@ -148,6 +149,48 @@ def repo_request(request):
         new_request = Join_request(user_id=user_id, repo_id=repo_id)
         new_request.save()
         return JsonResponse({"message": "success"})
+    return JsonResponse({"message": "请求方式错误"})
+
+
+# 管理员处理请求
+def reply_request(request):
+    if request.method == 'POST':
+        request_id = int(request.POST.get('request_id'))
+        req = Join_request.objects.get(pk=request_id)
+        identity = int(request.POST.get('identity'))  # -1表示拒绝请求， 1表示设为管理员， 2表示设为开发者， 3表示为游客
+        if identity == -1:
+            req.identity = 0
+            req.save()
+            return JsonResponse({"message": "success"})
+        # 仓库成员数+1，加入memeber表，修改请求状态
+        repo = Repository.objects.get(pk=req.repo_id)
+        repo.repo_member += 1
+        repo.save()
+        new_member = Member(repo_id_id=req.repo_id, user_id_id=req.user_id,
+                            username=User.objects.get(pk=req.user_id).username, identity=identity)
+        new_member.save()
+        req.identity = 1
+        req.save()
+        return JsonResponse({"message": "success"})
+    return JsonResponse({"message": "请求方式错误"})
+
+
+# 查询加入项目请求的信息列表
+def request_info(request):
+    if request.method == 'POST':
+        result = {"message": "success", "data": []}
+        user_id = int(request.POST.get('user'))  # 用户id
+        mem = Member.objects.filter(user_id_id=user_id)  # 查找该用户身为管理员的仓库
+        if not mem:
+            return JsonResponse({"message": "wrong"})
+        for x in mem:
+            repo_id = x.repo_id_id  # 仓库号
+            reqs = Join_request.objects.filter(repo_id=repo_id, identity=-1)
+            for y in reqs:
+                req = {"pk": y.pk, "repo_id": repo_id, "repo_name": Repository.objects.get(pk=repo_id).repo_name,
+                       "user_id": y.user_id, "user_name": User.objects.get(pk=y.user_id).username}
+                result['data'].append(req)
+        return JsonResponse(result)
     return JsonResponse({"message": "请求方式错误"})
 
 
