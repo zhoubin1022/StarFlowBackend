@@ -14,7 +14,7 @@ def getDevelopers(request):
     if request.method == 'POST':
         result = {"message": 'success', "data": []}
         repo_id = int(request.POST.get('repo_id'))
-        developers = Member.objects.filter(repo=repo_id, identity=2)
+        developers = Member.objects.filter(repo_id=repo_id, identity=2)
         if not developers:
             result = {"message": 'repository does not exist'}
             return JsonResponse(result)
@@ -53,14 +53,16 @@ def getTaskRecord(request):
 def checkTask(request):
     if request.method == 'POST':
         result = {"message": 'success', "data": []}
+        checkMember_id = int(request.POST.get('checkMember_id'))
         repo_id = int(request.POST.get('repo_id'))
         task_id = int(request.POST.get('task_id'))
         comment = str(request.POST.get('comment'))
         task = Task.objects.get(pk=task_id)
         task.status = 2
-        task_record = Record.objects.get(task_id=task_id)
+        task_record = Record.objects.get(task_id_id=task_id)
         task_record.result = 1  # 审核通过结果为 1
         task_record.comment = comment  # 管理员评价
+        task_record.checkMember_id = checkMember_id
         task.save()
         repository = Repository.objects.get(pk=repo_id)
         repository.checking -= 1
@@ -71,17 +73,27 @@ def checkTask(request):
     return JsonResponse({"message": 'wrong'})
 
 
-# 管理员撤销任务
-# def revokeTask(request):
-#     if request.method == 'POST':
-#         result = {"message": 'success', "data": []}
-#         task_id = int(request.GET.get('task_id'))
-#         task = Task.objects.get(pk=task_id)
-#         task.status = 0
-#         task.save()
-#         result['data'] = serializers.serialize('python', task)
-#         return JsonResponse(result)
-#     return JsonResponse({"message": 'wrong'})
+# 管理员撤销任务 (待检测)
+def revokeTask(request):
+    if request.method == 'POST':
+        result = {"message": 'success', "data": []}
+        checkMember_id = int(request.POST.get('checkMember_id'))
+        repo_id = int(request.POST.get('repo_id'))
+        task_id = int(request.POST.get('task_id'))
+        comment = str(request.POST.get('comment'))
+        task = Task.objects.get(pk=task_id)
+        task_record = Record.objects.get(task_id=task_id)
+        task.status = 0  # 未完成状态
+        task_record.comment = comment
+        task_record.checkMember_id = checkMember_id
+        task.save()
+        repository = Repository.objects.get(pk=repo_id)
+        repository.checking -= 1
+        repository.incomplete += 1
+        repository.save()
+        result['data'] = serializers.serialize('python', task)
+        return JsonResponse(result)
+    return JsonResponse({"message": 'wrong'})
 
 
 # 添加任务
