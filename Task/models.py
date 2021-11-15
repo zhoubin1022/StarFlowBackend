@@ -4,6 +4,7 @@ from User.models import *
 
 
 class Task(models.Model):
+    task_name = models.CharField(max_length=100, default='task')  # 任务名称
     repo = models.ForeignKey('Repository.Repository', on_delete=models.CASCADE)  # Repository表 id
     member = models.ForeignKey('Repository.Member', on_delete=models.CASCADE)  # Member表 id
     task_info = models.CharField(max_length=100)  # 任务信息
