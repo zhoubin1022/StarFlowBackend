@@ -5,6 +5,8 @@ from django.utils.timezone import localtime
 from django.core import serializers
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
+from requests.adapters import HTTPAdapter
+
 from Task.models import Task, Record
 from Repository.models import Repository, Member
 from User.models import User, Join_request
@@ -35,11 +37,20 @@ def getTaskRecord(request):
         result = {"message": 'success', "data": []}
         # repo_id = int(request.POST.get('repo_id'))
         task_id = int(request.POST.get('task_id'))
-        task_record = Record.objects.filter(task_id_id=task_id)
+        try:
+            task_record = Record.objects.filter(task_id_id=task_id)
+        except:
+            return JsonResponse({"message": 'Parameter error!'})
+
         for x in task_record:
-            record = {"pk": x.pk, "submit_time": x.submit_time, "submit_info": x.submit_info, "task_id": task_id,
+            s_time = x.submit_time
+            c_time = x.check_time
+            record = {"pk": x.pk,
+                      "submit_time": (s_time.year, s_time.month, s_time.day, s_time.hour, s_time.minute, s_time.second),
+                      "submit_info": x.submit_info, "task_id": task_id,
                       "submitMember": x.submitMember_id, "request_id": x.request_id, "checkMember": x.checkMember_id,
-                      "check_time": x.check_time, "result": x.result, "comment": x.comment}
+                      "check_time": (c_time.year, c_time.month, c_time.day, c_time.hour, c_time.minute, c_time.second),
+                      "result": x.result, "comment": x.comment}
             s_id = x.submitMember_id
             s_name = Member.objects.get(pk=s_id).username
             record["s_name"] = s_name
@@ -49,9 +60,10 @@ def getTaskRecord(request):
             if c_id:
                 c_name = Member.objects.get(pk=c_id).username
                 record["c_name"] = c_name
-            record["c_name"] = ""
+            else:
+                record["c_name"] = ""
             result["data"].append(record)
-        return JsonResponse(result)
+        return HttpResponse(json.dumps(result, ensure_ascii=False), content_type='application/json')
     return JsonResponse({"message": 'wrong'})
 
 
@@ -86,8 +98,8 @@ def checkTask(request):
         repository.finished += 1
         repository.save()
 
-        time = datetime.datetime.now()
-        check_time = (time.year, time.month, time.day, time.hour, time.minute, time.second)
+        c_time = task_record.check_time
+        check_time = (c_time.year, c_time.month, c_time.day, c_time.hour, c_time.minute, c_time.second)
         print(check_time)
         info = {'submit_member': submit_member.username, 'request_id': task_record.request_id,
                 'task_info': task.task_info, 'comment': task_record.comment,
@@ -128,8 +140,8 @@ def revokeTask(request):
         repository.incomplete += 1
         repository.save()
 
-        time = datetime.datetime.now()
-        check_time = (time.year, time.month, time.day, time.hour, time.minute, time.second)
+        c_time = task_record.check_time
+        check_time = (c_time.year, c_time.month, c_time.day, c_time.hour, c_time.minute, c_time.second)
         print(check_time)
         info = {'submit_member': submit_member.username, 'request_id': task_record.request_id,
                 'task_info': task.task_info, 'comment': task_record.comment,
@@ -154,7 +166,7 @@ def addTask(request):
             member = Member.objects.get(username=username, repo_id=repo_id)
             # print(member.username)
         except:
-            return JsonResponse({"message": 'wrong'})
+            return JsonResponse({"message": 'Parameter error!'})
 
         task = Task.objects.create(task_info=task_info, status=0, deadline=deadline,
                                    repo_id=repo_id, member_id=member.pk, task_name=task_name)
@@ -177,9 +189,12 @@ def submitTask(request):
         request_id = int(request.POST.get('request_id'))
         task_id = int(request.POST.get('task_id'))
         repo_id = int(request.POST.get('repo_id'))
-        record = Record.objects.create(submit_info=submit_info, submitMember_id=submit_id,
-                                       request_id=request_id, task_id_id=task_id)
-        task = Task.objects.get(pk=task_id)
+        try:
+            record = Record.objects.create(submit_info=submit_info, submitMember_id=submit_id,
+                                           request_id=request_id, task_id_id=task_id)
+            task = Task.objects.get(pk=task_id)
+        except:
+            return JsonResponse({"message": 'Parameter error!'})
         task.record_id = record.pk
         task.status = 1
         task.save()
@@ -198,15 +213,14 @@ def submitTask(request):
 def getRequest(request):
     if request.method == 'POST':
         result = {"message": 'success', "data": []}
-        owner = str(request.POST.get('owner'))
-        repo = str(request.POST.get('repo'))
-        url = 'https://api.github.com/repos/{}/{}/pulls'.format(owner, repo)
+        owner_repo = str(request.POST.get('owner_repo'))
+        url = f'https://api.github.com/repos/{owner_repo}/pulls'
         print(url)
         response = getPullRequests(url)
         response = response.json()
         infos = []
         for i in response:
-            info = {'request_id': i['id'], 'title': i['title'], 'created_at': i['created_at'],
+            info = {'request_id': i['number'], 'title': i['title'], 'created_at': i['created_at'],
                     'updated_at': i['updated_at'], 'user_name': i['user']['login']}
             infos.append(info)
         print(infos)
@@ -217,15 +231,60 @@ def getRequest(request):
 
 # 获取 pull requests 信息
 def getPullRequests(url):
-    api_token = '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'
+    # api_token = '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'
     hd = {
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                      'Chrome/94.0.4606.81 Safari/537.36' + api_token
+                      'Chrome/94.0.4606.81 Safari/537.36'  # + api_token
     }
+    print(url)
+    s = requests.Session()
+    s.mount('http://', HTTPAdapter(max_retries=3))
+    s.mount('https://', HTTPAdapter(max_retries=3))
     try:
-        r = requests.get(url, headers=hd, timeout=30)
-        r.raise_for_status()
-        r.encoding = r.apparent_encoding
-        return r
-    except:
-        return "产生异常"
+        res = s.get(url=url, headers=hd, timeout=5)
+        # print(res.json())
+        return res
+    except requests.exceptions.RequestException as e:
+        print(e)
+
+    # try:
+    #     r = requests.get(url, headers=hd, timeout=30)
+    #     r.raise_for_status()
+    #     r.encoding = r.apparent_encoding
+    #     return r
+    # except:
+    #     return "产生异常"
+
+
+# 删除任务
+def deleteTask(request):
+    if request.method == 'POST':
+        result = {"message": 'success', "data": []}
+        repo_id = request.POST.get('repo_id')
+        task_id = request.POST.get('task_id')
+        try:
+            del_task = Task.objects.get(pk=task_id)
+            repo = Repository.objects.get(pk=repo_id)
+        except:
+            return JsonResponse({"message": 'Parameter error!'})
+        del_task.delete()
+        repo.incomplete -= 1
+        repo.save()
+        tasks = Task.objects.filter(repo_id=repo_id)  # .values('pk', 'task_name', 'deadline')
+        infos = {'finished': [], 'checking': [], 'incomplete': []}
+        for task in tasks:
+            time = task.deadline
+            status = task.status
+            info = {'task_id': task.pk, 'task_name': task.task_name, 'task_info': task.task_info,
+                    'deadline': (time.year, time.month, time.day, time.hour, time.minute, time.second)}
+            if status == 0:  # 未完成任务分组
+                infos['incomplete'].append(info)
+            elif status == 1:  # 待审核任务分组
+                infos['checking'].append(info)
+            elif status == 2:  # 已完成任务分组
+                infos['finished'].append(info)
+
+        print(infos)
+        result['data'].append(infos)
+        return HttpResponse(json.dumps(result, ensure_ascii=False), content_type='application/json')
+    return {"message": 'wrong'}
