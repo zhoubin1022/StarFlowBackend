@@ -26,8 +26,13 @@ def getDevelopers(request):
         if not developers:
             result = {"message": 'repository does not exist'}
             return JsonResponse(result)
-        result["data"] = serializers.serialize('python', developers)
-        return JsonResponse(result)
+        infos = []
+        for dev in developers:
+            info = {'member_id': dev.pk, 'user_id': dev.user_id_id,
+                    'username': dev.username, 'identity': dev.identity}
+            infos.append(info)
+        result["data"].append(infos)
+        return HttpResponse(json.dumps(result, ensure_ascii=False), content_type='application/json')
     return JsonResponse({"message": 'wrong'})
 
 
