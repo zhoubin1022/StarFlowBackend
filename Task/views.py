@@ -5,6 +5,8 @@ from django.utils.timezone import localtime
 from django.core import serializers
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
+from requests.adapters import HTTPAdapter
+
 from Task.models import Task, Record
 from Repository.models import Repository, Member
 from User.models import User, Join_request
@@ -218,7 +220,7 @@ def getRequest(request):
         response = response.json()
         infos = []
         for i in response:
-            info = {'request_id': i['id'], 'title': i['title'], 'created_at': i['created_at'],
+            info = {'request_id': i['number'], 'title': i['title'], 'created_at': i['created_at'],
                     'updated_at': i['updated_at'], 'user_name': i['user']['login']}
             infos.append(info)
         print(infos)
@@ -234,13 +236,24 @@ def getPullRequests(url):
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                       'Chrome/94.0.4606.81 Safari/537.36'  # + api_token
     }
+    print(url)
+    s = requests.Session()
+    s.mount('http://', HTTPAdapter(max_retries=3))
+    s.mount('https://', HTTPAdapter(max_retries=3))
     try:
-        r = requests.get(url, headers=hd, timeout=30)
-        r.raise_for_status()
-        r.encoding = r.apparent_encoding
-        return r
-    except:
-        return "产生异常"
+        res = s.get(url=url, headers=hd, timeout=5)
+        # print(res.json())
+        return res
+    except requests.exceptions.RequestException as e:
+        print(e)
+
+    # try:
+    #     r = requests.get(url, headers=hd, timeout=30)
+    #     r.raise_for_status()
+    #     r.encoding = r.apparent_encoding
+    #     return r
+    # except:
+    #     return "产生异常"
 
 
 # 删除任务
