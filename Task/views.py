@@ -35,11 +35,20 @@ def getTaskRecord(request):
         result = {"message": 'success', "data": []}
         # repo_id = int(request.POST.get('repo_id'))
         task_id = int(request.POST.get('task_id'))
-        task_record = Record.objects.filter(task_id_id=task_id)
+        try:
+            task_record = Record.objects.filter(task_id_id=task_id)
+        except:
+            return JsonResponse({"message": 'Parameter error!'})
+
         for x in task_record:
-            record = {"pk": x.pk, "submit_time": x.submit_time, "submit_info": x.submit_info, "task_id": task_id,
+            s_time = x.submit_time
+            c_time = x.check_time
+            record = {"pk": x.pk,
+                      "submit_time": (s_time.year, s_time.month, s_time.day, s_time.hour, s_time.minute, s_time.second),
+                      "submit_info": x.submit_info, "task_id": task_id,
                       "submitMember": x.submitMember_id, "request_id": x.request_id, "checkMember": x.checkMember_id,
-                      "check_time": x.check_time, "result": x.result, "comment": x.comment}
+                      "check_time": (c_time.year, c_time.month, c_time.day, c_time.hour, c_time.minute, c_time.second),
+                      "result": x.result, "comment": x.comment}
             s_id = x.submitMember_id
             s_name = Member.objects.get(pk=s_id).username
             record["s_name"] = s_name
@@ -49,9 +58,10 @@ def getTaskRecord(request):
             if c_id:
                 c_name = Member.objects.get(pk=c_id).username
                 record["c_name"] = c_name
-            record["c_name"] = ""
+            else:
+                record["c_name"] = ""
             result["data"].append(record)
-        return JsonResponse(result)
+        return HttpResponse(json.dumps(result, ensure_ascii=False), content_type='application/json')
     return JsonResponse({"message": 'wrong'})
 
 
@@ -86,8 +96,8 @@ def checkTask(request):
         repository.finished += 1
         repository.save()
 
-        time = datetime.datetime.now()
-        check_time = (time.year, time.month, time.day, time.hour, time.minute, time.second)
+        c_time = task_record.check_time
+        check_time = (c_time.year, c_time.month, c_time.day, c_time.hour, c_time.minute, c_time.second)
         print(check_time)
         info = {'submit_member': submit_member.username, 'request_id': task_record.request_id,
                 'task_info': task.task_info, 'comment': task_record.comment,
@@ -128,8 +138,8 @@ def revokeTask(request):
         repository.incomplete += 1
         repository.save()
 
-        time = datetime.datetime.now()
-        check_time = (time.year, time.month, time.day, time.hour, time.minute, time.second)
+        c_time = task_record.check_time
+        check_time = (c_time.year, c_time.month, c_time.day, c_time.hour, c_time.minute, c_time.second)
         print(check_time)
         info = {'submit_member': submit_member.username, 'request_id': task_record.request_id,
                 'task_info': task.task_info, 'comment': task_record.comment,
