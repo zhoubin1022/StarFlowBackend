@@ -9,5 +9,6 @@ urlpatterns = [
     path('revoke', views.revokeTask),
     path('addtask', views.addTask),
     path('submit', views.submitTask),
-    path('pull', views.getRequest)
+    path('pull', views.getRequest),
+    path('delete', views.deleteTask)
 ]

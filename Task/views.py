@@ -154,7 +154,7 @@ def addTask(request):
             member = Member.objects.get(username=username, repo_id=repo_id)
             # print(member.username)
         except:
-            return JsonResponse({"message": 'wrong'})
+            return JsonResponse({"message": 'Parameter error!'})
 
         task = Task.objects.create(task_info=task_info, status=0, deadline=deadline,
                                    repo_id=repo_id, member_id=member.pk, task_name=task_name)
@@ -177,9 +177,12 @@ def submitTask(request):
         request_id = int(request.POST.get('request_id'))
         task_id = int(request.POST.get('task_id'))
         repo_id = int(request.POST.get('repo_id'))
-        record = Record.objects.create(submit_info=submit_info, submitMember_id=submit_id,
-                                       request_id=request_id, task_id_id=task_id)
-        task = Task.objects.get(pk=task_id)
+        try:
+            record = Record.objects.create(submit_info=submit_info, submitMember_id=submit_id,
+                                           request_id=request_id, task_id_id=task_id)
+            task = Task.objects.get(pk=task_id)
+        except:
+            return JsonResponse({"message": 'Parameter error!'})
         task.record_id = record.pk
         task.status = 1
         task.save()
@@ -217,10 +220,10 @@ def getRequest(request):
 
 # 获取 pull requests 信息
 def getPullRequests(url):
-    api_token = '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'
+    # api_token = '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'
     hd = {
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                      'Chrome/94.0.4606.81 Safari/537.36' + api_token
+                      'Chrome/94.0.4606.81 Safari/537.36'  # + api_token
     }
     try:
         r = requests.get(url, headers=hd, timeout=30)
@@ -229,3 +232,37 @@ def getPullRequests(url):
         return r
     except:
         return "产生异常"
+
+
+# 删除任务
+def deleteTask(request):
+    if request.method == 'POST':
+        result = {"message": 'success', "data": []}
+        repo_id = request.POST.get('repo_id')
+        task_id = request.POST.get('task_id')
+        try:
+            del_task = Task.objects.get(pk=task_id)
+            repo = Repository.objects.get(pk=repo_id)
+        except:
+            return JsonResponse({"message": 'Parameter error!'})
+        del_task.delete()
+        repo.incomplete -= 1
+        repo.save()
+        tasks = Task.objects.filter(repo_id=repo_id)  # .values('pk', 'task_name', 'deadline')
+        infos = {'finished': [], 'checking': [], 'incomplete': []}
+        for task in tasks:
+            time = task.deadline
+            status = task.status
+            info = {'task_id': task.pk, 'task_name': task.task_name, 'task_info': task.task_info,
+                    'deadline': (time.year, time.month, time.day, time.hour, time.minute, time.second)}
+            if status == 0:  # 未完成任务分组
+                infos['incomplete'].append(info)
+            elif status == 1:  # 待审核任务分组
+                infos['checking'].append(info)
+            elif status == 2:  # 已完成任务分组
+                infos['finished'].append(info)
+
+        print(infos)
+        result['data'].append(infos)
+        return HttpResponse(json.dumps(result, ensure_ascii=False), content_type='application/json')
+    return {"message": 'wrong'}
