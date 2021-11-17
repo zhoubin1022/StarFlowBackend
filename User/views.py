@@ -2,6 +2,7 @@ import re
 
 
 import requests
+import urllib3
 from django.core import serializers
 from django.http import JsonResponse
 from requests.adapters import HTTPAdapter
@@ -110,7 +111,9 @@ def getUserInfo(code):
         "js_code": code,
         "grant_type": 'authorization_code'
     }
+    urllib3.disable_warnings()
     result = requests.get('https://api.weixin.qq.com/sns/jscode2session', params=params, timeout=3, verify=False)
+    print(result)
     return result.json()
 
 
@@ -133,6 +136,7 @@ def githubLogin(request):
         user.password = password
         user.save()
         return JsonResponse(result)
+    return JsonResponse({"message": "请求方式错误"})
 
 
 # 加入项目请求
@@ -202,3 +206,27 @@ def repo_search(request):
         result = {"message": "success", "data": serializers.serialize("python", repos)}
         return JsonResponse(result)
     return JsonResponse({"message": "请求方式错误"})
+
+
+def showRepo(request):  # 展示该用户参与的项目列表
+    if request.method == 'POST':
+        result = {"message": "success", "data": []}
+        username = request.POST.get('username')  # 获取用户名
+        mem = Member.objects.filter(username=username)  # 找出该用户的所有仓库
+        if mem:
+            for x in mem:
+                repo_info = {"repo": []}
+                repo = Repository.objects.filter(pk=x.repo_id_id)
+                repo_info['repo'] = serializers.serialize('python', repo)
+                repo_info['member'] = x.identity
+                result['data'].append(repo_info)
+            return JsonResponse(result)
+        return JsonResponse({"message": "用户未参与项目"})
+    return JsonResponse({"message2": 'wrong'})
+
+
+# 展示项目的任务列表
+def showTask(request):
+    if request.method == 'POST':
+        result = {"message": "success", "finish": [], "checking": [], "incomplete": []}
+        repo_id = request.POST.get('repo_id')
