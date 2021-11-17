@@ -211,9 +211,8 @@ def submitTask(request):
 def getRequest(request):
     if request.method == 'POST':
         result = {"message": 'success', "data": []}
-        owner = str(request.POST.get('owner'))
-        repo = str(request.POST.get('repo'))
-        url = 'https://api.github.com/repos/{}/{}/pulls'.format(owner, repo)
+        owner_repo = str(request.POST.get('owner_repo'))
+        url = f'https://api.github.com/repos/{owner_repo}/pulls'
         print(url)
         response = getPullRequests(url)
         response = response.json()
