@@ -26,12 +26,12 @@ def getDevelopers(request):
         if not developers:
             result = {"message": 'repository does not exist'}
             return JsonResponse(result)
-        infos = []
+        # infos = []
         for dev in developers:
             info = {'member_id': dev.pk, 'user_id': dev.user_id_id,
                     'username': dev.username, 'identity': dev.identity}
-            infos.append(info)
-        result["data"].append(infos)
+            result["data"].append(info)
+
         return HttpResponse(json.dumps(result, ensure_ascii=False), content_type='application/json')
     return JsonResponse({"message": 'wrong'})
 
@@ -223,13 +223,13 @@ def getRequest(request):
         print(url)
         response = getPullRequests(url)
         response = response.json()
-        infos = []
+        # infos = []
         for i in response:
             info = {'request_id': i['number'], 'title': i['title'], 'created_at': i['created_at'],
                     'updated_at': i['updated_at'], 'user_name': i['user']['login']}
-            infos.append(info)
-        print(infos)
-        result['data'].append(infos)
+            # infos.append(info)
+            result['data'].append(info)
+        # print(infos)
         return HttpResponse(json.dumps(result, ensure_ascii=False), content_type='application/json')
     return JsonResponse({'message': 'wrong'})
 
