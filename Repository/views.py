@@ -1,64 +1,14 @@
-from django.shortcuts import render
+import json
+from datetime import datetime
 
-# Create your views here.
-import os
-import re
+import requests
 from django.http import JsonResponse,HttpResponse
+from requests.adapters import HTTPAdapter
+
 from Repository.models import Repository,Member
 from Task.models import Task
 from django.core import serializers
-import os
-import django
-from StarFlowBackend import settings
-
-def database_query(request):  # 展示该用户参与的项目列表
-    if request.method == 'POST':
-        username = request.POST.get('username')  # 获取用户名
-        user_id = request.POST.get('user_id')  # 获取用户名
-        repository_id = Member.objects.filter(username=username,user_id_id=user_id)  # 找出该用户的所有仓库
-        if repository_id.exists():
-            for i in repository_id:
-                records = Repository.objects.get(id=i.repo_id_id)  # 不知道怎么存下每一个对象？？？
-
-            return JsonResponse(result)
-        else:
-            return JsonResponse({"message": 'the user is not exist'})
-
-    return JsonResponse({"message": 'wrong'})
-
-def database_query_task_list(request):  # 展示项目的任务列表
-    if request.method == 'POST':
-        repo_id = int(request.POST.get('repo_id'))  # 获取仓库id
-        # 查询Task表找出所有任务信息，包括任务状态，截至日期等等
-        records1 = Task.objects.filter(repo_id=repo_id, status=0) .values('task_info','status','deadline','task_name')
-        records2 = Task.objects.filter(repo_id=repo_id, status=1).values('task_info', 'status', 'deadline','task_name')
-        records3 = Task.objects.filter(repo_id=repo_id, status=2).values('task_info', 'status', 'deadline','task_name')
-        record = records1 | records2
-        record = record | records3
-        result=record.order_by("status")
-        return HttpResponse(result)
-    return JsonResponse({"message": 'wrong'})
-
-def database_project_insert_one(request):  # 用户选择一个项目，把该项目放入数据库，并将当前用户设为超级管理员
-    if request.method == 'POST':
-        url = str(request.POST.get('url'))
-        repo_name = str(request.POST.get('repo_name'))
-        user_id = str(request.POST.get('user_id'))
-        username = str(request.POST.get('username'))
-        new_record_repo = Repository.objects.create(url=str(url), repo_name=str(repo_name))  #创建仓库表的一个数据
-        new_record_repo.save()  # 记录保存
-        #return HttpResponse(new_record_repo.id)
-        new_record_member = Member.objects.create(repo_id_id=new_record_repo.id, user_id_id=user_id, username=username,identity=0)
-        new_record_member.save()
-        records = Repository.objects.filter(id=new_record_repo.id)  # 查询刚刚创建的仓库数据
-        result = {"message": 'success', "data": serializers.serialize('python',records)}
-        return JsonResponse(result)
-    return JsonResponse({"message": 'wrong'})
-
-
-
-
-
+from User.models import User
 
 
 def identity_change(request):  # 项目人员身份调整   member中-1代表加入项目待审核、0表示超级管理员、1表示管理员、2表示开发者、3表示游客
@@ -126,6 +76,118 @@ def identity_change(request):  # 项目人员身份调整   member中-1代表加
         return JsonResponse({"message": 'wrong'})
 
 
+# 展示该用户参与的项目列表
+def showRepo(request):
+    if request.method == 'POST':
+        result = {"message": "success", "data": []}
+        u_id = int(request.POST.get('u_id'))  # 获取用户名
+        user = User.objects.filter(pk=u_id)
+        if not user:
+            return JsonResponse({"message": 'id错误'})
+        mem = Member.objects.filter(username=user.first().username)  # 找出该用户的所有仓库
+        if mem:
+            for x in mem:
+                repo_info = {"repo": []}
+                repo = Repository.objects.filter(pk=x.repo_id_id)
+                repo_info['repo'] = serializers.serialize('python', repo)
+                repo_info['member'] = x.identity
+                result['data'].append(repo_info)
+            return JsonResponse(result)
+        return JsonResponse({"message": "用户未参与项目"})
+    return JsonResponse({"message": '请求方式错误'})
 
 
+# 展示项目的任务列表
+def showTask(request):
+    if request.method == 'POST':
+        result = {"message": "success", "finish": [], "checking": [], "incomplete": []}
+        repo_id = int(request.POST.get('repo_id'))
+        repos = Repository.objects.filter(pk=repo_id)
+        if not repos:
+            return JsonResponse({"message": "仓库id错误"})
+        tasks = Task.objects.filter(repo_id=repo_id)
+        if not tasks:
+            return JsonResponse({"message": "当前项目没有任务"})
+        # print(tasks)
+        for x in tasks:  # 0代表未完成。1代表待审核，2代表已完成
+            task = {'task_name': x.task_name, 'task_info': x.task_info, 'task_id': x.pk, 'repo_id': x.repo_id,
+                    'member_id': x.member_id}
+            # print(task)
+            ddl = x.deadline
+            task['deadline'] = [ddl.year, ddl.month, ddl.day, ddl.hour, ddl.minute, ddl.second]
+            print(task['deadline'])
+            mem = Member.objects.filter(pk=x.member_id)
+            if not mem:
+                return JsonResponse({"message": "任务所分配给的成员不存在"})
+            user = User.objects.filter(pk=mem.first().user_id_id)
+            if not user:
+                return JsonResponse({"message": "任务所分配给的成员不存在"})
+            task['member_name'] = user.first().username
+            if x.status == 0:
+                result['incomplete'].append(task)
+            elif x.status == 1:
+                result['checking'].append(task)
+            elif x.status == 2:
+                result['finish'].append(task)
+            else:
+                return JsonResponse({"message": "任务状态异常"})
+        return JsonResponse(result)
+    return JsonResponse({"message": "请求方式错误"})
 
+
+# 添加项目
+def addRepo(request):
+    if request.method == 'POST':
+        url = str(request.POST.get('url'))
+        repo_name = str(request.POST.get('repo_name'))
+        user_id = int(request.POST.get('user_id'))
+        user = User.objects.filter(pk=user_id)
+        if not user:
+            return JsonResponse({"message": "用户id错误"})
+        username = user.first().username
+        new_repo = Repository(url=url, repo_name=repo_name)
+        new_repo.save()
+        repo_id = Repository.objects.get(url=url).pk
+        new_member = Member(repo_id_id=repo_id, user_id_id=user_id, username=username, identity=0)
+        new_member.save()
+        return JsonResponse({"message": "success"})
+    return JsonResponse({"message": "请求方式错误"})
+
+
+# #获取当前用户GitHub账号的所有仓库
+def getRepos(request):
+    if request.method == 'POST':
+        result = {"message": "success", "data": []}
+        u_id = int(request.POST.get('u_id'))
+        user = User.objects.filter(pk=u_id)
+        if not user:
+            return JsonResponse({"message": "用户id错误"})
+        username = user.first().username
+        info = getGithubRepo(username)
+        json_dict = json.loads(info)
+        for i in range(len(json_dict)):
+            repo = {'url': json_dict[i].get('html_url'), 'repo_name': json_dict[i].get('full_name')}
+            result['data'].append(repo)
+    return JsonResponse(result)
+
+
+# #获取仓库信息
+def getGithubRepo(username):
+    url = f"https://api.github.com/users/{username}/repos"
+    print(url)
+    s = requests.Session()
+    s.mount('http://', HTTPAdapter(max_retries=3))
+    s.mount('https://', HTTPAdapter(max_retries=3))
+    try:
+        res = s.get(url=url, timeout=5)
+        # print(res.json())
+        return res.text
+    except requests.exceptions.RequestException as e:
+        print(e)
+
+
+# 仓库人员身份调整
+def changeIdentity(request):
+    if request.method == 'POST':
+        return JsonResponse({})
+    return JsonResponse({"message": "请求方式错误"})
