@@ -7,4 +7,5 @@ urlpatterns = [
     path('showTask', views.showTask),
     path('addRepo', views.addRepo),
     path('getRepos', views.getRepos),
+    path('getAllMember', views.getAllMember),
 ]
