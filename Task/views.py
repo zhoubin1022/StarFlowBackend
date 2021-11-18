@@ -135,7 +135,7 @@ def revokeTask(request):
         task.status = 0  # 未完成状态
         task.save()
 
-        task_record = task_records[0]
+        task_record = task_records.first()
         task_record.result = 0  # 审核不通过
         task_record.comment = comment  # 不通过评价
         task_record.checkMember_id = checkMember_id
@@ -189,6 +189,7 @@ def addTask(request):
 def submitTask(request):
     if request.method == 'POST':
         result = {"message": 'success', "data": []}
+        title = str(request.POST.get('title'))
         submit_info = str(request.POST.get('submit_info'))
         submit_id = int(request.POST.get('submit_id'))
         request_id = int(request.POST.get('request_id'))
@@ -196,7 +197,7 @@ def submitTask(request):
         repo_id = int(request.POST.get('repo_id'))
         try:
             record = Record.objects.create(submit_info=submit_info, submitMember_id=submit_id,
-                                           request_id=request_id, task_id_id=task_id)
+                                           request_id=request_id, task_id_id=task_id, title=title)
             task = Task.objects.get(pk=task_id)
         except:
             return JsonResponse({"message": 'Parameter error!'})
