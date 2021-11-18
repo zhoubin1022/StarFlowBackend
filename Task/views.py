@@ -219,16 +219,26 @@ def getRequest(request):
     if request.method == 'POST':
         result = {"message": 'success', "data": []}
         owner_repo = str(request.POST.get('owner_repo'))
+        user_id = int(request.POST.get('user_id'))
+        try:
+            user = User.objects.get(pk=user_id)
+            username = user.username
+            print(username)
+        except:
+            return JsonResponse({"message": 'Parameter error!'})
+
         url = f'https://api.github.com/repos/{owner_repo}/pulls'
         print(url)
         response = getPullRequests(url)
         response = response.json()
         # infos = []
+
         for i in response:
-            info = {'request_id': i['number'], 'title': i['title'], 'created_at': i['created_at'],
-                    'updated_at': i['updated_at'], 'user_name': i['user']['login']}
-            # infos.append(info)
-            result['data'].append(info)
+            if username == i['user']['login']:
+                info = {'request_id': i['number'], 'title': i['title'], 'created_at': i['created_at'],
+                        'updated_at': i['updated_at'], 'user_name': i['user']['login']}
+                # infos.append(info)
+                result['data'].append(info)
         # print(infos)
         return HttpResponse(json.dumps(result, ensure_ascii=False), content_type='application/json')
     return JsonResponse({'message': 'wrong'})
