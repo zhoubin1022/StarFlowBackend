@@ -11,71 +11,6 @@ from django.core import serializers
 from User.models import User
 
 
-def identity_change(request):  # 项目人员身份调整   member中-1代表加入项目待审核、0表示超级管理员、1表示管理员、2表示开发者、3表示游客
-    if request.method == 'POST':
-        repo_id = request.POST.get('repo_id')
-        user_id = request.POST.get('user_id')
-        operation = request.POST.get('operation')
-        user = Member.objects.get(user_id_id=user_id, repo_id_id=repo_id)
-        if operation == '1':  # 操作码为1表示要将一个成员设置成管理员
-            if user.identity == 0:
-                user.identity = 1
-                user.save()
-                return JsonResponse({"message":'success set a  manager'})
-            elif user.identity == 1:
-                return JsonResponse({"message": 'the member is a  manager already'})
-            elif user.identity == 3:  # 将3设置为游客身份，不能操作
-                return JsonResponse({"message": 'error'})
-            elif user.identity == 2:
-                user.identity = 1
-                user.save()
-                return JsonResponse({"message": 'success set a  manager'})
-        elif operation == '0':  # 操作码为0设置为超级管理员
-            if user.identity == 1:
-                user.identity = int(0)
-                user.save()
-                return JsonResponse({"message": 'success set a super manager'})
-            elif user.identity == int(0):
-                return JsonResponse({"message": 'the member is a super manager already'})
-            elif user.identity == 2:
-                user.identity = 0
-                user.save()
-                return JsonResponse({"message": 'success set a  super manager'})
-            elif user.identity == 3:  # 将3设置为游客身份，不能操作
-                return JsonResponse({"message": 'error'})
-        elif operation == '2':  # 设置成开发者
-            if user.identity == 1:
-                user.identity = int(2)
-                user.save()
-                return JsonResponse({"message": 'success set a common member'})
-            elif user.identity == int(0):
-                user.identity = int(2)
-                user.save()
-                return JsonResponse({"message": 'success set common member'})
-            elif user.identity == int(2):
-                return JsonResponse({"message": 'the member is a common member already'})
-            elif user.identity == 3:  # 将3设置为游客身份，不能操作
-                return JsonResponse({"message": 'error'})
-
-        elif operation == '3':  # 设置成游客
-            if user.identity == int(1):
-                user.identity = 3
-                user.save()
-                return JsonResponse({"message": 'success set a visitor'})
-            elif user.identity == int(0):
-                user.identity = 3
-                user.save()
-                return JsonResponse({"message": 'success set a  visitor'})
-            elif user.identity == 2:
-                user.identity =3
-                user.save()
-                return JsonResponse({"message": 'success set a  visitor'})
-            elif user.identity == 3:
-                return JsonResponse({"message": 'the member is visitor already'})
-# 操作码错误直接报错，没有找到这个项目get函数会报错
-        return JsonResponse({"message": 'wrong'})
-
-
 # 展示该用户参与的项目列表
 def showRepo(request):
     if request.method == 'POST':
@@ -93,7 +28,8 @@ def showRepo(request):
                 repo_info = {"repo": []}
                 repo = Repository.objects.filter(pk=x.repo_id_id)
                 repo_info['repo'] = serializers.serialize('python', repo)
-                repo_info['member'] = x.identity
+                repo_info['role'] = x.identity
+                repo_info['member_id'] = x.pk
                 result['data'].append(repo_info)
             return JsonResponse(result)
         return JsonResponse({"message": "用户未参与项目"})
@@ -158,7 +94,7 @@ def addRepo(request):
     return JsonResponse({"message": "请求方式错误"})
 
 
-# #获取当前用户GitHub账号的所有仓库
+# 获取当前用户GitHub账号的所有仓库
 def getRepos(request):
     if request.method == 'POST':
         result = {"message": "success", "data": []}
@@ -169,10 +105,34 @@ def getRepos(request):
         username = user.first().username
         info = getGithubRepo(username)
         json_dict = json.loads(info)
+        # print(json_dict)
         for i in range(len(json_dict)):
             repo = {'url': json_dict[i].get('html_url'), 'repo_name': json_dict[i].get('full_name')}
             result['data'].append(repo)
-    return JsonResponse(result)
+        return JsonResponse(result)
+    return JsonResponse({"message": "请求方式错误"})
+
+
+# #根据关键词获取当前用户GitHub账号的仓库
+def getReposByKeyword(request):
+    if request.method == 'POST':
+        result = {"message": "success", "data": []}
+        u_id = int(request.POST.get('u_id'))
+        keyword = request.POST.get('keyword')
+        user = User.objects.filter(pk=u_id)
+        if not user:
+            return JsonResponse({"message": "用户id错误"})
+        username = user.first().username
+        info = getGithubRepo(username)
+        json_dict = json.loads(info)
+        # print(json_dict)
+        for i in range(len(json_dict)):
+            if not(keyword in json_dict[i].get('full_name')):
+                continue
+            repo = {'url': json_dict[i].get('html_url'), 'repo_name': json_dict[i].get('full_name')}
+            result['data'].append(repo)
+        return JsonResponse(result)
+    return JsonResponse({"message": "请求方式错误"})
 
 
 # #获取仓库信息
@@ -180,10 +140,11 @@ def getGithubRepo(username):
     url = f"https://api.github.com/users/{username}/repos"
     print(url)
     s = requests.Session()
+    headers = {"Authorization": "token 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"}
     s.mount('http://', HTTPAdapter(max_retries=3))
     s.mount('https://', HTTPAdapter(max_retries=3))
     try:
-        res = s.get(url=url, timeout=5)
+        res = s.get(url=url, timeout=5, headers=headers)
         # print(res.json())
         return res.text
     except requests.exceptions.RequestException as e:
@@ -193,9 +154,13 @@ def getGithubRepo(username):
 # 获取项目管理员、开发者、游客列表
 def getAllMember(request):
     if request.method == 'POST':
-        result = {"message": 'success', "data": []}
+        result = {"message": 'success', "data": [], "owner": []}
         repo_id = int(request.POST.get('repo_id'))
-        developers = Member.objects.filter(repo_id=repo_id, identity__in=[1, 2, 3]).order_by('identity')
+        owner = Member.objects.filter(repo_id_id=repo_id, identity=0)
+        if not owner:
+            return JsonResponse({"message": "超级管理员出错"})
+        result['owner'] = serializers.serialize('python', owner)
+        developers = Member.objects.filter(repo_id_id=repo_id, identity__in=[1, 2, 3]).order_by('identity')
         if not developers:
             return JsonResponse({"message": '暂无其他参与者'})
         result["data"] = serializers.serialize('python', developers)
@@ -206,6 +171,38 @@ def getAllMember(request):
 # 仓库人员身份调整
 def changeIdentity(request):
     if request.method == 'POST':
-
-        return JsonResponse({})
+        result = {"message": "success"}
+        mem = json.loads(request.body.decode("utf-8"))
+        for x in range(len(mem)):
+            mem_id = mem[x]['member_id']
+            try:
+                member = Member.objects.get(pk=mem_id)
+            except :
+                return JsonResponse({"message": "member的id存在错误"})
+            identity = mem[x]['identity']
+            if identity == 0:
+                return JsonResponse({"message": "不能修改为超级管理员"})
+            if identity == -1:
+                return JsonResponse({"message": "不能修改为待审核状态"})
+            print(mem_id, identity)
+            member.identity = identity
+            member.save()
+        return JsonResponse(result)
     return JsonResponse({"message": "请求方式错误"})
+
+
+def test(request):
+    if request.method == "POST":
+        url = "https://api.github.com/users/zhoubin1022/repos"
+        print(url)
+        s = requests.Session()
+        headers = {"Authorization": "token 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"}
+        s.mount('http://', HTTPAdapter(max_retries=3))
+        s.mount('https://', HTTPAdapter(max_retries=3))
+        try:
+            res = s.get(url=url, timeout=10, headers=headers)
+            print(res.json())
+            return res.text
+        except requests.exceptions.RequestException as e:
+            print(e)
+    return JsonResponse({"aaa"})
