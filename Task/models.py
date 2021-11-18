@@ -14,6 +14,7 @@ class Task(models.Model):
 
 
 class Record(models.Model):
+    title = models.CharField(max_length=100, default='')  # pull requests title
     submit_time = models.DateTimeField(auto_now_add=True)  # 提交时间
     submit_info = models.CharField(max_length=100)  # 提交描述
     task_id = models.ForeignKey('Task', on_delete=models.CASCADE, related_name='task', null=True)
