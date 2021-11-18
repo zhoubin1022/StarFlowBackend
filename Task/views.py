@@ -31,7 +31,7 @@ def getDevelopers(request):
             info = {'member_id': dev.pk, 'user_id': dev.user_id_id,
                     'username': dev.username, 'identity': dev.identity}
             result["data"].append(info)
-
+            
         return HttpResponse(json.dumps(result, ensure_ascii=False), content_type='application/json')
     return JsonResponse({"message": 'wrong'})
 

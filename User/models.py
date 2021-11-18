@@ -14,7 +14,6 @@ class User(models.Model):
     openid = models.CharField(max_length=100)
     session_key = models.CharField(max_length=100)
     username = models.CharField(max_length=50, null=True)
-    password = models.CharField(max_length=50, null=True)
 
 
 '''

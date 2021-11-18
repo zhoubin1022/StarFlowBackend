@@ -82,9 +82,13 @@ def wxLogin(request):
     if request.method == 'POST':
         result = {"status": 0}  # 0表示不存在已创建，1表示已存在
         code = request.POST.get('code')
+        print(code)
         user_info = getUserInfo(code)
+        print(111)
         openid = user_info['openid']
+        print(openid)
         session_key = user_info['session_key']
+        print(session_key)
         user = User.objects.filter(openid=openid)
         if user:
             result['id'] = user.first().pk
@@ -110,10 +114,17 @@ def getUserInfo(code):
         "js_code": code,
         "grant_type": 'authorization_code'
     }
-    urllib3.disable_warnings()
-    result = requests.get('https://api.weixin.qq.com/sns/jscode2session', params=params, timeout=3, verify=False)
-    print(result)
-    return result.json()
+    url = 'https://api.weixin.qq.com/sns/jscode2session'
+    s = requests.Session()
+    s.mount('http://', HTTPAdapter(max_retries=3))
+    s.mount('https://', HTTPAdapter(max_retries=3))
+    try:
+        urllib3.disable_warnings()
+        res = s.get(url=url, params=params, timeout=5, verify=False)
+        print(res.text)
+        return res.json()
+    except requests.exceptions.RequestException as e:
+        print(e)
 
 
 # github登录
@@ -122,7 +133,6 @@ def githubLogin(request):
         result = {"message": 'success'}
         uid = int(request.POST.get('id'))
         username = request.POST.get('username')
-        password = request.POST.get('password')
         users = User.objects.filter(pk=uid)
         if not users:
             return JsonResponse({"message": '小程序登录状态出错'})
@@ -132,7 +142,6 @@ def githubLogin(request):
         # if not status:
         #     return JsonResponse({"message": '账号或密码错误'})
         user.username = username
-        user.password = password
         user.save()
         return JsonResponse(result)
     return JsonResponse({"message": "请求方式错误"})
@@ -143,12 +152,20 @@ def repo_request(request):
     if request.method == 'POST':
         user_id = int(request.POST.get('user'))
         repo_id = int(request.POST.get('repo'))
+        print(user_id)
+        print(repo_id)
         user = User.objects.get(pk=user_id)
         if not user:
             return JsonResponse({"message": "用户信息错误"})
         repo = Repository.objects.get(pk=repo_id)
         if not repo:
             return JsonResponse({"message": "仓库信息错误"})
+        mem = Member.objects.filter(user_id_id=user_id, repo_id_id=repo_id)
+        if mem:
+            return JsonResponse({"message": "您已在该项目中"})
+        join = Join_request.objects.filter(user_id=user_id, repo_id=repo_id, identity=-1)
+        if join:
+            return JsonResponse({"message": "您已发送申请，请稍等片刻"})
         new_request = Join_request(user_id=user_id, repo_id=repo_id)
         new_request.save()
         return JsonResponse({"message": "success"})
@@ -201,7 +218,10 @@ def request_info(request):
 def repo_search(request):
     if request.method == 'POST':
         keyword = request.POST.get('keyword')
+        print(keyword)
         repos = Repository.objects.filter(repo_name__icontains=keyword)
+        if not repos:
+            return JsonResponse({"message": "该关键词无对应仓库"})
         result = {"message": "success", "data": serializers.serialize("python", repos)}
         return JsonResponse(result)
     return JsonResponse({"message": "请求方式错误"})

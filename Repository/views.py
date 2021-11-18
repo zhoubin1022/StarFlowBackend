@@ -80,10 +80,13 @@ def identity_change(request):  # 项目人员身份调整   member中-1代表加
 def showRepo(request):
     if request.method == 'POST':
         result = {"message": "success", "data": []}
-        u_id = int(request.POST.get('u_id'))  # 获取用户名
+        u_id = int(request.POST.get('u_id'))  # 获取用户id
+        print(u_id)
         user = User.objects.filter(pk=u_id)
         if not user:
             return JsonResponse({"message": 'id错误'})
+        if not user.first().username:
+            return JsonResponse({"message": "请先登录GitHub"})
         mem = Member.objects.filter(username=user.first().username)  # 找出该用户的所有仓库
         if mem:
             for x in mem:
@@ -102,6 +105,7 @@ def showTask(request):
     if request.method == 'POST':
         result = {"message": "success", "finish": [], "checking": [], "incomplete": []}
         repo_id = int(request.POST.get('repo_id'))
+        print(repo_id)
         repos = Repository.objects.filter(pk=repo_id)
         if not repos:
             return JsonResponse({"message": "仓库id错误"})
@@ -115,7 +119,7 @@ def showTask(request):
             # print(task)
             ddl = x.deadline
             task['deadline'] = [ddl.year, ddl.month, ddl.day, ddl.hour, ddl.minute, ddl.second]
-            print(task['deadline'])
+            # print(task['deadline'])
             mem = Member.objects.filter(pk=x.member_id)
             if not mem:
                 return JsonResponse({"message": "任务所分配给的成员不存在"})
@@ -186,8 +190,22 @@ def getGithubRepo(username):
         print(e)
 
 
+# 获取项目管理员、开发者、游客列表
+def getAllMember(request):
+    if request.method == 'POST':
+        result = {"message": 'success', "data": []}
+        repo_id = int(request.POST.get('repo_id'))
+        developers = Member.objects.filter(repo_id=repo_id, identity__in=[1, 2, 3]).order_by('identity')
+        if not developers:
+            return JsonResponse({"message": '暂无其他参与者'})
+        result["data"] = serializers.serialize('python', developers)
+        return JsonResponse(result)
+    return JsonResponse({"message": "请求方式错误"})
+
+
 # 仓库人员身份调整
 def changeIdentity(request):
     if request.method == 'POST':
+
         return JsonResponse({})
     return JsonResponse({"message": "请求方式错误"})
