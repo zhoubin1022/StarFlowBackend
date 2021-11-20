@@ -227,10 +227,12 @@ def getRequest(request):
             print(username)
         except:
             return JsonResponse({"message": 'Parameter error!'})
-
+        token = user.token
+        if not token:
+            return JsonResponse({"message": "token为空"})
         url = f'https://api.github.com/repos/{owner_repo}/pulls'
         print(url)
-        response = getPullRequests(url)
+        response = getPullRequests(url, token)
         response = response.json()
         # infos = []
 
@@ -246,12 +248,12 @@ def getRequest(request):
 
 
 # 获取 pull requests 信息
-def getPullRequests(url):
+def getPullRequests(url, token):
     # api_token = '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'
     hd = {
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                       'Chrome/94.0.4606.81 Safari/537.36',  # + api_token
-        "Authorization": "token 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"
+        "Authorization": "token "+token
     }
     print(url)
     s = requests.Session()

@@ -150,7 +150,10 @@ def getGithubRepo(username, token):
     url = f"https://api.github.com/users/{username}/repos"
     print(url)
     s = requests.Session()
-    headers = {"Authorization": "token "+token}
+    headers = {
+        "user-agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                      'Chrome/94.0.4606.81 Safari/537.36',
+        "Authorization": "token "+token}
     print(headers['Authorization'])
     s.mount('http://', HTTPAdapter(max_retries=3))
     s.mount('https://', HTTPAdapter(max_retries=3))

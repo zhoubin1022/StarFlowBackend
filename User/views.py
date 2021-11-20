@@ -133,6 +133,7 @@ def githubLogin(request):
         result = {"message": 'success'}
         uid = int(request.POST.get('id'))
         username = request.POST.get('username')
+        token = request.POST.get('token')
         users = User.objects.filter(pk=uid)
         if not users:
             return JsonResponse({"message": '小程序登录状态出错'})
@@ -142,6 +143,7 @@ def githubLogin(request):
         # if not status:
         #     return JsonResponse({"message": '账号或密码错误'})
         user.username = username
+        user.token = token
         user.save()
         return JsonResponse(result)
     return JsonResponse({"message": "请求方式错误"})
