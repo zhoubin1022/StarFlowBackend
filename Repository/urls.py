@@ -10,4 +10,5 @@ urlpatterns = [
     path('changeIdentity', views.changeIdentity),
     path('test', views.test),
     path('getRepos', views.getRepos),
+    path('exitRepo', views.exitRepo),
 ]

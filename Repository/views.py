@@ -83,11 +83,17 @@ def showTask(request):
 def addRepo(request):
     if request.method == 'POST':
         url = str(request.POST.get('url'))
+        print(url)
         repo_name = str(request.POST.get('repo_name'))
+        print(repo_name)
         user_id = int(request.POST.get('user_id'))
+        print(user_id)
         user = User.objects.filter(pk=user_id)
         if not user:
             return JsonResponse({"message": "用户id错误"})
+        repo = Repository.objects.filter(url=url)
+        if repo:
+            return JsonResponse({"message": "该仓库已存在"})
         username = user.first().username
         new_repo = Repository(url=url, repo_name=repo_name)
         new_repo.save()
@@ -159,7 +165,7 @@ def getGithubRepo(username, token):
     s.mount('https://', HTTPAdapter(max_retries=3))
     try:
         res = s.get(url=url, timeout=10, headers=headers)
-        print(res.json())
+        # print(res.json())
         return res.text
     except requests.exceptions.RequestException as e:
         print(e)
@@ -202,6 +208,22 @@ def changeIdentity(request):
             member.identity = identity
             member.save()
         return JsonResponse(result)
+    return JsonResponse({"message": "请求方式错误"})
+
+
+# 退出项目
+def exitRepo(request):
+    if request.method == 'POST':
+        u_id = int(request.POST.get('u_id'))
+        repo_id = int(request.POST.get('repo_id'))
+        try:
+            mem = Member.objects.get(user_id_id=u_id, repo_id_id=repo_id)
+        except:
+            return JsonResponse({"message": "用户不在该仓库中"})
+        if mem.identity == 0:
+            return JsonResponse({"message": "该用户为项目创建者，不能退出！"})
+        mem.delete()
+        return JsonResponse({"message": "success"})
     return JsonResponse({"message": "请求方式错误"})
 
 
