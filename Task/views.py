@@ -250,7 +250,8 @@ def getPullRequests(url):
     # api_token = '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'
     hd = {
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                      'Chrome/94.0.4606.81 Safari/537.36'  # + api_token
+                      'Chrome/94.0.4606.81 Safari/537.36',  # + api_token
+        "Authorization": "token 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"
     }
     print(url)
     s = requests.Session()

@@ -6,7 +6,7 @@ from django.http import JsonResponse,HttpResponse
 from requests.adapters import HTTPAdapter
 
 from Repository.models import Repository,Member
-from Task.models import Task
+from Task.models import Task, Record
 from django.core import serializers
 from User.models import User
 
@@ -51,10 +51,14 @@ def showTask(request):
         # print(tasks)
         for x in tasks:  # 0代表未完成。1代表待审核，2代表已完成
             task = {'task_name': x.task_name, 'task_info': x.task_info, 'task_id': x.pk, 'repo_id': x.repo_id,
-                    'member_id': x.member_id}
+                    'member_id': x.member_id, 'title': ''}
             # print(task)
             ddl = x.deadline
             task['deadline'] = [ddl.year, ddl.month, ddl.day, ddl.hour, ddl.minute, ddl.second]
+            record_id = x.record_id
+            record = Record.objects.filter(pk=record_id)
+            if record:
+                task['title'] = record.first().title
             # print(task['deadline'])
             mem = Member.objects.filter(pk=x.member_id)
             if not mem:
@@ -103,7 +107,10 @@ def getRepos(request):
         if not user:
             return JsonResponse({"message": "用户id错误"})
         username = user.first().username
-        info = getGithubRepo(username)
+        token = user.first().token
+        if not token:
+            return JsonResponse({"message": "token为空"})
+        info = getGithubRepo(username, token)
         json_dict = json.loads(info)
         # print(json_dict)
         for i in range(len(json_dict)):
@@ -123,7 +130,10 @@ def getReposByKeyword(request):
         if not user:
             return JsonResponse({"message": "用户id错误"})
         username = user.first().username
-        info = getGithubRepo(username)
+        token = user.first().token
+        if not token:
+            return JsonResponse({"message": "token为空"})
+        info = getGithubRepo(username, token)
         json_dict = json.loads(info)
         # print(json_dict)
         for i in range(len(json_dict)):
@@ -136,16 +146,17 @@ def getReposByKeyword(request):
 
 
 # #获取仓库信息
-def getGithubRepo(username):
+def getGithubRepo(username, token):
     url = f"https://api.github.com/users/{username}/repos"
     print(url)
     s = requests.Session()
-    headers = {"Authorization": "token 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"}
+    headers = {"Authorization": "token "+token}
+    print(headers['Authorization'])
     s.mount('http://', HTTPAdapter(max_retries=3))
     s.mount('https://', HTTPAdapter(max_retries=3))
     try:
-        res = s.get(url=url, timeout=5, headers=headers)
-        # print(res.json())
+        res = s.get(url=url, timeout=10, headers=headers)
+        print(res.json())
         return res.text
     except requests.exceptions.RequestException as e:
         print(e)

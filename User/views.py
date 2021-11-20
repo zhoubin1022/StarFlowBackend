@@ -176,7 +176,10 @@ def repo_request(request):
 def reply_request(request):
     if request.method == 'POST':
         request_id = int(request.POST.get('request_id'))
-        req = Join_request.objects.get(pk=request_id)
+        try:
+            req = Join_request.objects.get(pk=request_id)
+        except:
+            return JsonResponse({"message": "不存在该申请"})
         identity = int(request.POST.get('identity'))  # -1表示拒绝请求， 1表示设为管理员， 2表示设为开发者， 3表示为游客
         if identity == -1:
             req.identity = 0
@@ -200,16 +203,18 @@ def request_info(request):
     if request.method == 'POST':
         result = {"message": "success", "data": []}
         user_id = int(request.POST.get('user'))  # 用户id
-        mem = Member.objects.filter(user_id_id=user_id)  # 查找该用户身为管理员的仓库
-        if not mem:
-            return JsonResponse({"message": "wrong"})
-        for x in mem:
-            repo_id = x.repo_id_id  # 仓库号
-            reqs = Join_request.objects.filter(repo_id=repo_id, identity=-1)
-            for y in reqs:
-                req = {"pk": y.pk, "repo_id": repo_id, "repo_name": Repository.objects.get(pk=repo_id).repo_name,
-                       "user_id": y.user_id, "user_name": User.objects.get(pk=y.user_id).username}
-                result['data'].append(req)
+        print(user_id)
+        repo_id = int(request.POST.get('repo'))
+        print(repo_id)
+        try:
+            x = Member.objects.get(user_id_id=user_id, repo_id_id=repo_id, identity__in=[0, 1])  # 查找该用户身为管理员的仓库
+        except:
+            return JsonResponse({"message": "参数错误或不是管理员"})
+        reqs = Join_request.objects.filter(repo_id=repo_id, identity=-1)
+        for y in reqs:
+            req = {"pk": y.pk, "repo_id": repo_id, "repo_name": Repository.objects.get(pk=repo_id).repo_name,
+                   "user_id": y.user_id, "user_name": User.objects.get(pk=y.user_id).username}
+            result['data'].append(req)
         return JsonResponse(result)
     return JsonResponse({"message": "请求方式错误"})
 
