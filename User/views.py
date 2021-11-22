@@ -163,7 +163,7 @@ def repo_request(request):
         if not repo:
             return JsonResponse({"message": "仓库信息错误"})
         mem = Member.objects.filter(user_id_id=user_id, repo_id_id=repo_id)
-        if mem:
+        if mem and not(mem.first().identity == -2):
             return JsonResponse({"message": "您已在该项目中"})
         join = Join_request.objects.filter(user_id=user_id, repo_id=repo_id, identity=-1)
         if join:
@@ -191,6 +191,12 @@ def reply_request(request):
         repo = Repository.objects.get(pk=req.repo_id)
         repo.repo_member += 1
         repo.save()
+        mem = Member.objects.filter(repo_id_id=req.repo_id, user_id_id=req.user_id)
+        if mem:
+            new_member = mem.first()
+            new_member.identity = identity
+            new_member.save()
+            return JsonResponse({"message": "success"})
         new_member = Member(repo_id_id=req.repo_id, user_id_id=req.user_id,
                             username=User.objects.get(pk=req.user_id).username, identity=identity)
         new_member.save()

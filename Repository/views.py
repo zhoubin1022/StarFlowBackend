@@ -22,7 +22,7 @@ def showRepo(request):
             return JsonResponse({"message": 'id错误'})
         if not user.first().username:
             return JsonResponse({"message": "请先登录GitHub"})
-        mem = Member.objects.filter(username=user.first().username)  # 找出该用户的所有仓库
+        mem = Member.objects.filter(username=user.first().username, identity__in=[0, 1, 2, 3])  # 找出该用户的所有仓库
         if mem:
             for x in mem:
                 repo_info = {"repo": []}
@@ -132,6 +132,7 @@ def getReposByKeyword(request):
         result = {"message": "success", "data": []}
         u_id = int(request.POST.get('u_id'))
         keyword = request.POST.get('keyword')
+        print(u_id, keyword)
         user = User.objects.filter(pk=u_id)
         if not user:
             return JsonResponse({"message": "用户id错误"})
@@ -193,17 +194,24 @@ def changeIdentity(request):
     if request.method == 'POST':
         result = {"message": "success"}
         mem = json.loads(request.body.decode("utf-8"))
+        print(mem)
         for x in range(len(mem)):
             mem_id = mem[x]['member_id']
             try:
                 member = Member.objects.get(pk=mem_id)
-            except :
+            except:
                 return JsonResponse({"message": "member的id存在错误"})
+            if mem.identity == 2:
+                task = Task.objects.filter(member_id=mem.pk, status__in=[0, 1])
+                if task:
+                    return JsonResponse({"message": "有开发者任务为未完成或待审核，不能改变身份"})
             identity = mem[x]['identity']
             if identity == 0:
                 return JsonResponse({"message": "不能修改为超级管理员"})
             if identity == -1:
                 return JsonResponse({"message": "不能修改为待审核状态"})
+            if identity == -2:
+                return JsonResponse({"message": "不能修改为退出项目状态"})
             print(mem_id, identity)
             member.identity = identity
             member.save()
@@ -216,13 +224,28 @@ def exitRepo(request):
     if request.method == 'POST':
         u_id = int(request.POST.get('u_id'))
         repo_id = int(request.POST.get('repo_id'))
+        print(u_id, repo_id)
         try:
             mem = Member.objects.get(user_id_id=u_id, repo_id_id=repo_id)
         except:
             return JsonResponse({"message": "用户不在该仓库中"})
         if mem.identity == 0:
             return JsonResponse({"message": "该用户为项目创建者，不能退出！"})
-        mem.delete()
+        if mem.identity == -1:
+            return JsonResponse({"message": "该用户为待审核状态，不能退出！"})
+        if mem.identity == -2:
+            return JsonResponse({"message": "该用户已退出项目，不能再次退出！"})
+        tasks = Task.objects.filter(member_id=mem.pk, status__in=[0, 1])
+        if tasks:
+            return JsonResponse({"message": "有任务处于待审核或未完成状态，请在任务完成后再次退出！"})
+        try:
+            repo = Repository.objects.get(pk=repo_id)
+        except:
+            return JsonResponse({"message": "仓库不存在！"})
+        repo.repo_member -= 1
+        repo.save()
+        mem.identity = -2
+        mem.save()
         return JsonResponse({"message": "success"})
     return JsonResponse({"message": "请求方式错误"})
 
