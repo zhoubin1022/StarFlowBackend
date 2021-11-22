@@ -287,7 +287,15 @@ def deleteTask(request):
         except:
             return JsonResponse({"message": 'Parameter error!'})
         del_task.delete()
-        repo.incomplete -= 1
+        status = del_task.status
+        if status == 0:
+            repo.incomplete -= 1
+        elif status == 1:
+            repo.checking -= 1
+        elif status == 2:
+            repo.finished -= 1
+        else:
+            return JsonResponse({"message": 'Tasks status error'})
         repo.save()
         tasks = Task.objects.filter(repo_id=repo_id)  # .values('pk', 'task_name', 'deadline')
         infos = {'finished': [], 'checking': [], 'incomplete': []}
