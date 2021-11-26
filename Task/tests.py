@@ -9,9 +9,9 @@ headers = {'Accept': '*/*'}
 # Create your tests here.
 
 developer_data = {"repo_id": 1}
+record_data = {"task_id": 1}
 
-
-def test(method, url, body_data=None, query_string=None, rest_query_string=None):
+def test(method, url, body_data=None):
     url = host + url
     response_data = requests.post(url, data=body_data, headers=headers)
     response_data = json.loads(response_data.content.decode("utf-8"))
@@ -22,3 +22,4 @@ def test(method, url, body_data=None, query_string=None, rest_query_string=None)
 
 
 test("POST", "/developer", developer_data)
+test("POST", "/record", record_data)
