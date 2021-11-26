@@ -158,14 +158,18 @@ def getGithubRepo(username, token):
     print(url)
     s = requests.Session()
     headers = {
-        "user-agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                      'Chrome/94.0.4606.81 Safari/537.36',
-        "Authorization": "token "+token}
+        "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                      'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36',
+        "Accept": "application/vnd.github.cloak-preview+json",
+        "Authorization": "token " + token,
+    }
     print(headers['Authorization'])
     s.mount('http://', HTTPAdapter(max_retries=3))
     s.mount('https://', HTTPAdapter(max_retries=3))
     try:
         res = s.get(url=url, timeout=10, headers=headers)
+        # res = requests.get(url=url, headers=headers)
+        print(1)
         # print(res.json())
         return res.text
     except requests.exceptions.RequestException as e:
@@ -223,6 +227,7 @@ def changeIdentity(request):
 def exitRepo(request):
     if request.method == 'POST':
         u_id = int(request.POST.get('u_id'))
+        print(u_id)
         repo_id = int(request.POST.get('repo_id'))
         print(u_id, repo_id)
         try:
@@ -250,18 +255,24 @@ def exitRepo(request):
     return JsonResponse({"message": "请求方式错误"})
 
 
-def test(request):
-    if request.method == "POST":
-        url = "https://api.github.com/users/zhoubin1022/repos"
-        print(url)
-        s = requests.Session()
-        headers = {"Authorization": "token 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"}
-        s.mount('http://', HTTPAdapter(max_retries=3))
-        s.mount('https://', HTTPAdapter(max_retries=3))
+# 删除项目
+def delRepo(request):
+    if request.method == 'POST':
+        u_id = int(request.POST.get('u_id'))
+        repo_id = int(request.POST.get('repo_id'))
         try:
-            res = s.get(url=url, timeout=10, headers=headers)
-            print(res.json())
-            return res.text
-        except requests.exceptions.RequestException as e:
-            print(e)
+            repo = Repository.objects.get(pk=repo_id)
+            mem = Member.objects.get(user_id_id=u_id, repo_id_id=repo_id)
+        except:
+            return JsonResponse({"message": "该用户非该项目成员"})
+        if not(mem.identity == 0):
+            return JsonResponse({"message": "该用户不是该项目的超级管理员"})
+        repo.delete()
+        return JsonResponse({"message": "success"})
+    return JsonResponse({"message": "请求方式错误"})
+
+
+def test(request):
+    res = requests.get(url="https://api.github.com/users/zhoubin1022/repos", timeout=10)
+    print(res.text)
     return JsonResponse({"aaa"})
