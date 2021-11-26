@@ -11,4 +11,5 @@ urlpatterns = [
     path('test', views.test),
     path('getRepos', views.getRepos),
     path('exitRepo', views.exitRepo),
+    path('delRepo', views.delRepo),
 ]

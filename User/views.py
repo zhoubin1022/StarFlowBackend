@@ -118,9 +118,11 @@ def getUserInfo(code):
     s = requests.Session()
     s.mount('http://', HTTPAdapter(max_retries=3))
     s.mount('https://', HTTPAdapter(max_retries=3))
+    print(url)
     try:
         urllib3.disable_warnings()
         res = s.get(url=url, params=params, timeout=5, verify=False)
+        print(res.status_code)
         print(res.text)
         return res.json()
     except requests.exceptions.RequestException as e:
@@ -133,7 +135,8 @@ def githubLogin(request):
         result = {"message": 'success'}
         uid = int(request.POST.get('id'))
         username = request.POST.get('username')
-        token = request.POST.get('token')
+        # token = request.POST.get('token')
+        print(id, username)
         users = User.objects.filter(pk=uid)
         if not users:
             return JsonResponse({"message": '小程序登录状态出错'})
@@ -143,7 +146,11 @@ def githubLogin(request):
         # if not status:
         #     return JsonResponse({"message": '账号或密码错误'})
         user.username = username
-        user.token = token
+        mem = Member.objects.filter(user_id_id=user.pk)
+        for x in mem:
+            x.username = username
+            x.save()
+        # user.token = token
         user.save()
         return JsonResponse(result)
     return JsonResponse({"message": "请求方式错误"})
@@ -163,8 +170,16 @@ def repo_request(request):
         if not repo:
             return JsonResponse({"message": "仓库信息错误"})
         mem = Member.objects.filter(user_id_id=user_id, repo_id_id=repo_id)
-        if mem and not(mem.first().identity == -2):
-            return JsonResponse({"message": "您已在该项目中"})
+        if mem:
+            if mem.first().identity == -2:
+                x = Join_request.objects.filter(user_id=user_id, repo_id=repo_id)
+                if x:
+                    x_join = x.first()
+                    x_join.identity = -1
+                    x_join.save()
+                    return JsonResponse({"message": "success"})
+            else:
+                return JsonResponse({"message": "您已在该项目中"})
         join = Join_request.objects.filter(user_id=user_id, repo_id=repo_id, identity=-1)
         if join:
             return JsonResponse({"message": "您已发送申请，请稍等片刻"})
@@ -183,6 +198,7 @@ def reply_request(request):
         except:
             return JsonResponse({"message": "不存在该申请"})
         identity = int(request.POST.get('identity'))  # -1表示拒绝请求， 1表示设为管理员， 2表示设为开发者， 3表示为游客
+        print(request_id, identity)
         if identity == -1:
             req.identity = 0
             req.save()
@@ -195,6 +211,8 @@ def reply_request(request):
         if mem:
             new_member = mem.first()
             new_member.identity = identity
+            req.identity = 1
+            req.save()
             new_member.save()
             return JsonResponse({"message": "success"})
         new_member = Member(repo_id_id=req.repo_id, user_id_id=req.user_id,
