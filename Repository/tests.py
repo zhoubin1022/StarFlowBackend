@@ -10,6 +10,7 @@ headers = {'Accept': '*/*'}
 
 showRepo_data = {"u_id": 1}
 showTask_data = {"repo_id": 1}
+getAllMember_data = {"repo_id": 1}
 
 
 def test(method, url, body_data=None):
@@ -24,3 +25,4 @@ def test(method, url, body_data=None):
 
 test("POST", "/showRepo", showRepo_data)
 test("POST", "/showTask", showTask_data)
+test("POST", "/getAllMember", getAllMember_data)
