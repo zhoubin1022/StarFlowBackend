@@ -9,6 +9,7 @@ headers = {'Accept': '*/*'}
 # Create your tests here.
 
 request_info_data = {"user": 1, "repo": 1}
+repo_search_data = {"keyword": "test"}
 
 
 def test(method, url, body_data=None):
@@ -23,3 +24,4 @@ def test(method, url, body_data=None):
 
 
 test("POST", "/request_info", request_info_data)
+test("POST", "/repo_search", repo_search_data)
