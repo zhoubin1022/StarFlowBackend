@@ -1,4 +1,4 @@
-"""starFlow URL Configuration
+"""StarFlowBackend URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/3.2/topics/http/urls/
@@ -20,7 +20,7 @@ from django.urls import path, include
 
 urlpatterns = [
     path(r'admin/', admin.site.urls),
-    url(r'^user/', include('User.urls')),
-    url(r'^repo/', include('Repository.urls')),
-    url(r'^task/', include('Task.urls')),
+    url('user/', include('User.urls')),
+    url('repo/', include('Repository.urls')),
+    url('task/', include('Task.urls')),
 ]

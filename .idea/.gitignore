@@ -6,3 +6,8 @@
 /dataSources.local.xml
 # Editor-based HTTP Client requests
 /httpRequests/
+*.log
+*.pot
+*.pyc
+__pycache__
+db.sqlite3
