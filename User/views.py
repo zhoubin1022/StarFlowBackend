@@ -135,7 +135,7 @@ def githubLogin(request):
         result = {"message": 'success'}
         uid = int(request.POST.get('id'))
         username = request.POST.get('username')
-        # token = request.POST.get('token')
+        token = request.POST.get('token')
         print(id, username)
         users = User.objects.filter(pk=uid)
         if not users:
@@ -150,7 +150,7 @@ def githubLogin(request):
         for x in mem:
             x.username = username
             x.save()
-        # user.token = token
+        user.token = token
         user.save()
         return JsonResponse(result)
     return JsonResponse({"message": "请求方式错误"})

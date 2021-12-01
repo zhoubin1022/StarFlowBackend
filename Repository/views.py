@@ -22,7 +22,7 @@ def showRepo(request):
             return JsonResponse({"message": 'id错误'})
         if not user.first().username:
             return JsonResponse({"message": "请先登录GitHub"})
-        mem = Member.objects.filter(username=user.first().username, identity__in=[0, 1, 2, 3])  # 找出该用户的所有仓库
+        mem = Member.objects.filter(user_id_id=u_id, identity__in=[0, 1, 2, 3])  # 找出该用户的所有仓库
         if mem:
             for x in mem:
                 repo_info = {"repo": []}
@@ -185,7 +185,7 @@ def getAllMember(request):
         if not owner:
             return JsonResponse({"message": "超级管理员出错"})
         result['owner'] = serializers.serialize('python', owner)
-        developers = Member.objects.filter(repo_id_id=repo_id, identity__in=[1, 2, 3]).order_by('identity')
+        developers = Member.objects.filter(repo_id_id=repo_id, identity__in=[0, 1, 2, 3]).order_by('identity')
         if not developers:
             return JsonResponse({"message": '暂无其他参与者'})
         result["data"] = serializers.serialize('python', developers)
@@ -199,17 +199,42 @@ def changeIdentity(request):
         result = {"message": "success"}
         mem = json.loads(request.body.decode("utf-8"))
         print(mem)
+        # mem_id = int(mem['member_id'])
+        # try:
+        #     member = Member.objects.get(pk=mem_id)
+        # except:
+        #     return JsonResponse({"message": "member的id存在错误"})
+        # if member.identity == 2:
+        #     task = Task.objects.filter(member_id=mem.pk, status__in=[0, 1])
+        #     if task:
+        #         return JsonResponse({"message": "开发者任务为未完成或待审核，不能改变身份"})
+        # identity = int(mem['identity'])
+        # print(identity)
+        # if identity == 0:
+        #     return JsonResponse({"message": "不能修改为超级管理员"})
+        # if identity == -1:
+        #     return JsonResponse({"message": "不能修改为待审核状态"})
+        # if identity == -2:
+        #     return JsonResponse({"message": "不能修改为退出项目状态"})
+        # print(mem_id, identity)
+        # member.identity = identity
+        # member.save()
+        # return JsonResponse(result)
         for x in range(len(mem)):
-            mem_id = mem[x]['member_id']
+            # print(x)
+            mem_id = int(mem[x]['member_id'])
+            print(mem_id)
             try:
                 member = Member.objects.get(pk=mem_id)
             except:
                 return JsonResponse({"message": "member的id存在错误"})
-            if mem.identity == 2:
-                task = Task.objects.filter(member_id=mem.pk, status__in=[0, 1])
+            if member.identity == 2:
+                print(member.identity)
+                task = Task.objects.filter(member_id=member.pk, status__in=[0, 1])
                 if task:
                     return JsonResponse({"message": "有开发者任务为未完成或待审核，不能改变身份"})
-            identity = mem[x]['identity']
+            identity = int(mem[x]['identity'])
+            print(identity)
             if identity == 0:
                 return JsonResponse({"message": "不能修改为超级管理员"})
             if identity == -1:
