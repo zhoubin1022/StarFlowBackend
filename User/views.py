@@ -1,3 +1,4 @@
+import json
 import re
 
 
@@ -12,67 +13,10 @@ from Task.models import Task
 from User.models import User, Join_request
 
 
-class Login(object):
-    def __init__(self):
-        self.headers = {
-            'Referer': 'https://github.com/',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 '
-                          '(KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36',
-            'Host': 'github.com'
-        }
-        self.login_url = 'https://github.com/login'
-        self.post_url = 'https://github.com/session'
-        # 维持会话，自动处理cookies
-        self.session = requests.Session()
-
-    # 解析出登录所需要的
-    def token(self):
-        self.session.mount('https://', HTTPAdapter(max_retries=3))
-        res = self.session.get(self.login_url, headers=self.headers, timeout=15)
-        if res.status_code == requests.codes.ok:
-            authenticity_token = re.findall('<input type="hidden" name="authenticity_token" value="(.+?)" />', res.text)
-            print("authenticity_token：{}".format(authenticity_token))
-            return authenticity_token[1]
-
-    def login(self, username, password):
-        post_data = {
-            'commit': 'Sign in',
-            'utf8': '✓',
-            'authenticity_token': self.token(),
-            'login': username,
-            'password': password
-        }
-        # 登录 post 提交表单
-        res_index = self.session.post(url=self.login_url, headers=self.headers, data=post_data)
-        if res_index.status_code == requests.codes.ok:
-            return True
-        return False
-
-    def get_request(self, repo_name, user_id):
-        request_url = 'https://github.com/' + repo_name + '/pulls'
-        # user = User.objects.get(user_id=user_id)[0]
-        '''post_data = {
-            'commit': 'Sign in',
-            'utf8': '✓',
-            'authenticity_token': self.token(),
-            'login': user.username,
-            'password': user.password
-        }'''
-        post_data = {
-            'commit': 'Sign in',
-            'utf8': '✓',
-            'authenticity_token': self.token(),
-            'login': "zhoubin1022",
-            'password': "z20011022b"
-        }
-        res = self.session.post(url=request_url, headers=self.headers, data=post_data)
-        print(res)
-
-
 def test(request):
-    login = Login()
-    status = login.login("zhoubin1022", "z20011022b")
-    if status:
+    if request.method == 'POST':
+        token = request.POST.get('token')
+        print(getUsername(token))
         return JsonResponse({"status": "yes"})
     return JsonResponse({"status": "no"})
 
@@ -134,17 +78,15 @@ def githubLogin(request):
     if request.method == 'POST':
         result = {"message": 'success'}
         uid = int(request.POST.get('id'))
-        username = request.POST.get('username')
         token = request.POST.get('token')
-        print(id, username)
+        print(id)
         users = User.objects.filter(pk=uid)
         if not users:
             return JsonResponse({"message": '小程序登录状态出错'})
         user = users.first()
-        # login = Login()
-        # status = login.login(username, password)
-        # if not status:
-        #     return JsonResponse({"message": '账号或密码错误'})
+        username = getUsername(token)
+        if username == "":
+            return JsonResponse({"message": 'token有误'})
         user.username = username
         mem = Member.objects.filter(user_id_id=user.pk)
         for x in mem:
@@ -152,8 +94,35 @@ def githubLogin(request):
             x.save()
         user.token = token
         user.save()
+        result['username'] = username
         return JsonResponse(result)
     return JsonResponse({"message": "请求方式错误"})
+
+
+# 获取token对应的用户名
+def getUsername(token):
+    url = "https://api.github.com/user"
+    print(url)
+    s = requests.Session()
+    headers = {
+        "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                      'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36',
+        "Accept": "application/vnd.github.cloak-preview+json",
+        "Authorization": "token " + token,
+    }
+    print(headers['Authorization'])
+    s.mount('http://', HTTPAdapter(max_retries=3))
+    s.mount('https://', HTTPAdapter(max_retries=3))
+    try:
+        res = s.get(url=url, timeout=10, headers=headers)
+        # res = requests.get(url=url, headers=headers)
+        print(1)
+        if res.status_code != requests.codes.ok:
+            return ""
+        json_dict = json.loads(res.text)
+        return json_dict['login']
+    except requests.exceptions.RequestException as e:
+        print(e)
 
 
 # 加入项目请求

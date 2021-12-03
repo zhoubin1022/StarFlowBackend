@@ -41,11 +41,23 @@ def showTask(request):
     if request.method == 'POST':
         result = {"message": "success", "finish": [], "checking": [], "incomplete": []}
         repo_id = int(request.POST.get('repo_id'))
+        u_id = int(request.POST.get('repo_id'))
+        action = int(request.POST.get('action'))
+        if action not in [0, 1]:
+            return JsonResponse({"message": "action错误"})
         print(repo_id)
         repos = Repository.objects.filter(pk=repo_id)
         if not repos:
             return JsonResponse({"message": "仓库id错误"})
         tasks = Task.objects.filter(repo_id=repo_id)
+        # 新加内容，我的部分
+        if action == 1:
+            try:
+                member = Member.objects.get(repo_id_id=repo_id, user_id_id=u_id)
+            except :
+                return JsonResponse({"message": "不在当前项目中"})
+            tasks = tasks.filter(member_id=member.pk)
+
         if not tasks:
             return JsonResponse({"message": "当前项目没有任务"})
         # print(tasks)
