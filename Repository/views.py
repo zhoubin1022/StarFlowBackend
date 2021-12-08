@@ -41,7 +41,7 @@ def showTask(request):
     if request.method == 'POST':
         result = {"message": "success", "finish": [], "checking": [], "incomplete": []}
         repo_id = int(request.POST.get('repo_id'))
-        u_id = int(request.POST.get('repo_id'))
+        u_id = int(request.POST.get('u_id'))
         action = int(request.POST.get('action'))
         if action not in [0, 1]:
             return JsonResponse({"message": "action错误"})
@@ -63,7 +63,17 @@ def showTask(request):
         # print(tasks)
         for x in tasks:  # 0代表未完成。1代表待审核，2代表已完成
             task = {'task_name': x.task_name, 'task_info': x.task_info, 'task_id': x.pk, 'repo_id': x.repo_id,
-                    'member_id': x.member_id, 'title': ''}
+                    'member_id': x.member_id, 'title': '', 'request_url': ''}
+
+            if x.status == 1 or x.status == 2:
+                task_record = Record.objects.filter(task_id_id=x.pk)
+                if task_record:
+                    try:
+                        repo = Repository.objects.get(pk=repo_id)
+                    except:
+                        return JsonResponse({"message": "仓库id错误"})
+                    task['request_url'] = f"https://github.com/{repo.repo_name}/pull/{task_record.first().request_id}"
+
             # print(task)
             ddl = x.deadline
             task['deadline'] = [ddl.year, ddl.month, ddl.day, ddl.hour, ddl.minute, ddl.second]

@@ -209,6 +209,8 @@ def request_info(request):
         for y in reqs:
             req = {"pk": y.pk, "repo_id": repo_id, "repo_name": Repository.objects.get(pk=repo_id).repo_name,
                    "user_id": y.user_id, "user_name": User.objects.get(pk=y.user_id).username}
+            r_time = y.request_time
+            req['request_time'] = [r_time.year, r_time.month, r_time.day, r_time.hour, r_time.minute, r_time.second]
             result['data'].append(req)
         return JsonResponse(result)
     return JsonResponse({"message": "请求方式错误"})
@@ -223,5 +225,16 @@ def repo_search(request):
         if not repos:
             return JsonResponse({"message": "该关键词无对应仓库"})
         result = {"message": "success", "data": serializers.serialize("python", repos)}
+        return JsonResponse(result)
+    return JsonResponse({"message": "请求方式错误"})
+
+
+# 返回申请人数
+def request_num(request):
+    if request.method == 'POST':
+        result = {"message": "success", "num": 0}
+        repo_id = int(request.POST.get('repo_id'))
+        print(repo_id)
+        result['num'] = Join_request.objects.filter(repo_id=repo_id, identity=-1).count()
         return JsonResponse(result)
     return JsonResponse({"message": "请求方式错误"})
